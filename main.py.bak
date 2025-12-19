@@ -6,241 +6,75 @@ pygame.init()
 screen = pygame.display.set_mode((640, 480))
 pygame.display.set_caption("Sunflower")
 
+# assets
 title_image = pygame.image.load("backgrounds/title-screen.png").convert()
 title_image = pygame.transform.scale(title_image, screen.get_size())
 
+# background images
 backgrounds = [
     pygame.transform.scale(pygame.image.load("backgrounds/day.png").convert(), screen.get_size()),
     pygame.transform.scale(pygame.image.load("backgrounds/sunset.png").convert(), screen.get_size()),
     pygame.transform.scale(pygame.image.load("backgrounds/night.png").convert(), screen.get_size())
 ]
-current_bg = 0
+current_bg = 0  # index of current background
 
-
+# button images
 talk_button = pygame.image.load("images/talk-button.png").convert_alpha()
 water_button = pygame.image.load("images/water-button.png").convert_alpha()
 feed_button = pygame.image.load("images/feed-button.png").convert_alpha()
 
+# button positions - spacing them apart horizontally
 talk_button_rect = talk_button.get_rect(topleft=(100, 420))
 water_button_rect = water_button.get_rect(topleft=(270, 420))
 feed_button_rect = feed_button.get_rect(topleft=(440, 420))
 
+# title text styling
 title_font = pygame.font.SysFont("monospace", 56)
 title_color = (255, 255, 255)
 title_offset = (0, -5)
 
-
-def wrap_text_to_width(text, font, max_width):
-    words = text.split(" ")
-    lines = []
-    current = ""
-    for word in words:
-        candidate = word if current == "" else f"{current} {word}"
-        if font.size(candidate)[0] <= max_width:
-            current = candidate
-            continue
-        if current:
-            lines.append(current)
-        if font.size(word)[0] > max_width:
-            remaining = word
-            while remaining:
-                slice_len = len(remaining)
-                while slice_len > 0 and font.size(remaining[:slice_len])[0] > max_width:
-                    slice_len -= 1
-                if slice_len == 0:
-                    break
-                lines.append(remaining[:slice_len])
-                remaining = remaining[slice_len:]
-            current = ""
-        else:
-            current = word
-    if current:
-        lines.append(current)
-    return lines if lines else [""]
-
-
-def render_wrapped_centered(surface, text, font, color, rect, line_spacing=4):
-    max_width = rect.width - 10
-    lines = wrap_text_to_width(text, font, max_width)
-    line_height = font.get_height()
-    total_height = len(lines) * line_height + line_spacing * (len(lines) - 1 if lines else 0)
-    start_y = rect.y + (rect.height - total_height) // 2
-    for i, line in enumerate(lines):
-        rendered = font.render(line, True, color)
-        text_x = rect.x + (rect.width - rendered.get_width()) // 2
-        text_y = start_y + i * (line_height + line_spacing)
-        surface.blit(rendered, (text_x, text_y))
-
+# prompt styling
 prompt_font = pygame.font.SysFont("monospace", 28) 
 prompt_color = (255, 220, 80)
 prompt_offset = (0,80)
 
+# credit styling
 credit_font = pygame.font.SysFont("monospace", 20)
 credit_color = (255, 220, 80)
 credit_offset = (-150, 220)
 
-greetings_day = [
-    "Good morning.",
-    "Morning! Ready for the day.",
-    "Another day, another chance to grow.",
+# phrase system
+phrases = [
+    "Hello there!",
+    "I'm happy to see you!",
+    "How are you today?",
+    "Thanks for visiting!",
+    "This is nice..."
 ]
-greetings_sunset = [
-    "Good afternoon.",
-    "The sun's getting low.",
-    "Evening's almost here.",
-]
-greetings_night = [
-    "Good evening.",
-    "It's quiet at night.",
-    "The stars are nice.",
-]
-
-phrases_young = [
-    "Hi. Thanks for checking on me.",
-    "I’m still getting used to the sun.",
-    "This is all new, but I like it.",
-    "Another day already? Nice.",
-    "I think I’m a little taller today.",
-    "I like it when you stop by.",
-    "Let’s keep this up.",
-    "I’m trying my best.",
-    "Being here with you feels good.",
-]
-phrases_evolved = [
-    "We’ve got a nice routine going.",
-    "These days go by faster now.",
-    "I notice the small things more.",
-    "Thanks for staying with me.",
-    "I like our little rhythm.",
-    "You take good care of me.",
-    "It’s easier when we do this together.",
-    "I’m not perfect, but I’m okay.",
-    "I remember yesterday. It felt kind.",
-    "Let’s enjoy today while it’s here.",
-]
-phrases_old = [
-    "I’m slowing down a little.",
-    "I can’t soak up the sun like before.",
-    "That’s okay. We had good days.",
-    "I’m keeping the best parts.",
-    "Thanks for being patient with me.",
-    "I don’t have as much, but I still have you.",
-    "Sitting with you is enough.",
-    "I’m tired, but I’m grateful.",
-    "What we did together mattered.",
-    "Let’s rest for a minute.",
-]
-
-ambient_phrases = [
-    "I’m glad you’re here.",
-    "Let’s take this one step at a time.",
-    "I like quiet moments like this.",
-    "Today felt simple in a good way.",
-    "I’m happy I’m not alone.",
-    "We don’t have to rush.",
-    "This is a nice place to be.",
-    "You’ve been a good friend.",
-    "Let’s make today a good one.",
-    "Thanks for sticking with me.",
-]
-
-water_phrases = [
-    "Thanks for the water.",
-    "That helped a lot.",
-    "I feel better already.",
-    "You always know when I’m thirsty.",
-    "That was just right.",
-    "Let’s do this again tomorrow.",
-    "You take good care of me.",
-    "I can handle the day now.",
-    "Thanks for stopping by with water.",
-    "That’s exactly what I needed.",
-]
-
-feed_phrases = [
-    "Thanks for the food.",
-    "That was a nice boost.",
-    "I’ll use this well.",
-    "You always remember.",
-    "This should carry me a while.",
-    "I can grow on this.",
-    "That was kind of you.",
-    "I needed that.",
-    "Feeling steadier now.",
-    "Thanks for feeding me.",
-]
-
-used_young = set()
-used_evolved = set()
-used_old = set()
-used_ambient = set()
-used_water = set()
-used_feed = set()
-used_greetings_day = set()
-used_greetings_sunset = set()
-used_greetings_night = set()
-
-def _pick_from_pool(pool, used_set):
-    remaining = [i for i in range(len(pool)) if i not in used_set]
-    if not remaining:
-        return None
-    idx = random.choice(remaining)
-    used_set.add(idx)
-    return pool[idx]
-
-def get_next_phrase(evolved_flag, old_flag, use_greeting=False):
-    if use_greeting:
-        if current_bg == 0:
-            greeting = _pick_from_pool(greetings_day, used_greetings_day)
-            if greeting:
-                return greeting
-        elif current_bg == 1:
-            greeting = _pick_from_pool(greetings_sunset, used_greetings_sunset)
-            if greeting:
-                return greeting
-        elif current_bg == 2:
-            greeting = _pick_from_pool(greetings_night, used_greetings_night)
-            if greeting:
-                return greeting
-    
-    if old_flag:
-        phrase = _pick_from_pool(phrases_old, used_old)
-    elif evolved_flag:
-        phrase = _pick_from_pool(phrases_evolved, used_evolved)
-    else:
-        phrase = _pick_from_pool(phrases_young, used_young)
-    if phrase is not None:
-        return phrase
-    phrase = _pick_from_pool(ambient_phrases, used_ambient)
-    if phrase is None:
-        used_ambient.clear()
-        phrase = _pick_from_pool(ambient_phrases, used_ambient)
-    return phrase if phrase is not None else "This is a quiet moment."
-
-def get_next_from(pool, used_set):
-    p = _pick_from_pool(pool, used_set)
-    return p if p is not None else "Thank you."
 current_phrase = ""
 show_phrase = False
 phrase_timer = 0
-phrase_duration = 3000
+phrase_duration = 3000  # show for 3 seconds
 phrase_font = pygame.font.SysFont("monospace", 14)
 phrase_color = (217, 137, 0)
+# typing effect
 typing_speed = 50 
 current_char_index = 0
 last_char_time = 0
 full_phrase = ""
 
+# load sunflower sprite animations
 base_animations, evolve_animation, evolved_animations, old_animations, death_animation = load_sunflower_animations()
 watering_can_animation = load_watering_can_animation()
 plant_food_animation = load_plant_food_animation()
 
+# evolution tracking
 import os
 
 EVOLUTION_FILE = "evolution_data.txt"
 EVOLUTION_DAYS = 3
-OLD_STAGE_DAYS = 6
-RESET_PROGRESS_ON_START = True
+OLD_STAGE_DAYS = 6  # 3 more days after evolution
+RESET_PROGRESS_ON_START = True  # set to False if you want persistence across runs
 
 def get_evolution_data():
     """Get or create evolution data: returns (day_count, evolved, old_stage)
@@ -261,10 +95,12 @@ def get_evolution_data():
                 old_flag = (data[2] == 'True') and (days >= OLD_STAGE_DAYS)
                 return days, evolved_flag, old_flag
             elif len(data) == 2:
+                # old format without old_stage
                 days = int(data[0])
                 evolved_flag = (data[1] == 'True') and (days >= EVOLUTION_DAYS)
                 return days, evolved_flag, False
             else:
+                # very old format, just day count
                 days = int(data[0])
                 return days, False, False
     else:
@@ -285,36 +121,39 @@ death_frame = 0
 death_last_update = pygame.time.get_ticks()
 evolution_last_update = pygame.time.get_ticks()
 evolution_cooldown = 220
-death_cooldown = 400
 
+# game state
 game_start = False
 text_color = (255, 255, 255)
 
-action = 2
+# animation state
+action = 2  # 0: talking, 1: excited, 2: idle
 frame = 0
 last_update = pygame.time.get_ticks()
 animation_cooldown = 220
-ending_anim_frame = 0
-ending_anim_last_update = pygame.time.get_ticks()
 
+# one-time animation tracking junk
 playing_one_time = False
 one_time_action = None
 one_time_frame = 0
 one_time_last_update = pygame.time.get_ticks()
-one_time_loop_count = 0
-one_time_loops_needed = 2
+one_time_loop_count = 0  # how many times animation has looped
+one_time_loops_needed = 2  # how many times to loop before returning to idle
 
+# watering can animation
 show_watering_can = False
 watering_can_frame = 0
 watering_can_last_update = pygame.time.get_ticks()
 watering_can_cooldown = 120 
 watering_can_finished = False 
 
+# plant food animation
 show_plant_food = False
 plant_food_frame = 0
 plant_food_last_update = pygame.time.get_ticks()
 plant_food_cooldown = 120
 
+# painting mode state
 showing_paint_prompt = False
 painting_active = False
 current_paint_day = 0
@@ -335,20 +174,22 @@ done_button_rect = pygame.Rect(520, 400, 80, 28)
 clear_button_rect = pygame.Rect(420, 400, 80, 28)
 last_paint_pos = None
 
-ending_screen = 0
+# ending sequence state
+ending_screen = 0  # 0: none, 1: care recap, 2: pictures, 3: thank you, 4: ellipsis, 5: enjoyed, 6: wilting, 7: fade to black, 8: reset to title
 showing_gallery = False
 showing_farewell = False
-showing_recap = False
+showing_recap = False  # deprecated, use ending_screen instead
 ending_started = False
-fade_alpha = 0
-fade_speed = 1
+fade_alpha = 0  # for fade to black effect
+fade_speed = 5  # fade alpha increment per frame
 
+# care counters
 feed_count = 0
 water_count = 0
 
+# background cycling for days
 click_count = 0
 clicks_per_bg = 3
-use_greeting_next_talk = True
 
 running = True
 clock = pygame.time.Clock()
@@ -365,29 +206,36 @@ while running:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mouse_clicked = True
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            # stop stroke in paint mode
             last_paint_pos = None
 
     if not game_start:
         screen.blit(title_image, (0, 0))
         
+        # render title
         title = title_font.render("Sunflower", True, title_color)
         title_x = (screen.get_width() - title.get_width()) // 2 + title_offset[0]
         title_y = (screen.get_height() - title.get_height()) // 2 + title_offset[1]
         screen.blit(title, (title_x, title_y))
         
+        # render prompt
         prompt = prompt_font.render("Press SPACE to start", True, prompt_color)
         prompt_x = (screen.get_width() - prompt.get_width()) // 2 + prompt_offset[0]
         prompt_y = (screen.get_height() - prompt.get_height()) // 2 + prompt_offset[1]
         screen.blit(prompt, (prompt_x, prompt_y))
         
+        # render my credit
         credit = credit_font.render("Created by: possibly_nai", True, credit_color)
         credit_x = (screen.get_width() - credit.get_width()) // 2 + credit_offset[0]
         credit_y = (screen.get_height() - credit.get_height()) // 2 + credit_offset[1]
         screen.blit(credit, (credit_x, credit_y))
     else:
+        # game screen display the right background
         screen.blit(backgrounds[current_bg], (0, 0))
         
+        # paint prompt screen (before opening paint mode)
         if showing_paint_prompt:
+            # Display sunflower
             if old_stage:
                 anim_set = old_animations
             elif evolved:
@@ -396,6 +244,7 @@ while running:
                 anim_set = base_animations
             screen.blit(anim_set[action][frame], (250, 270))
             
+            # Create and display dialogue box
             text_box_width = 250
             text_box_height = 80
             text_box_x = 370
@@ -404,6 +253,7 @@ while running:
             pygame.draw.rect(screen, (255, 193, 87), text_box_rect, border_radius=15)
             pygame.draw.rect(screen, (217, 137, 0), text_box_rect, 3, border_radius=15)
             
+            # Render the text
             prompt_text1 = phrase_font.render("Let's draw a picture!", True, phrase_color)
             prompt_text2 = phrase_font.render("(click anywhere to draw)", True, phrase_color)
             text_x1 = text_box_x + (text_box_width - prompt_text1.get_width()) // 2
@@ -413,6 +263,7 @@ while running:
             screen.blit(prompt_text1, (text_x1, text_y1))
             screen.blit(prompt_text2, (text_x2, text_y2))
             
+            # Wait for click to open paint mode
             if mouse_clicked:
                 showing_paint_prompt = False
                 painting_active = True
@@ -421,21 +272,28 @@ while running:
             clock.tick(60)
             continue
         
+        # painting mode screen
         if painting_active:
+            # dim overlay
             overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 160))
             screen.blit(overlay, (0, 0))
+            # panel
             pygame.draw.rect(screen, (245, 245, 245), pygame.Rect(50, 30, 540, 420), border_radius=8)
             pygame.draw.rect(screen, (40, 40, 40), pygame.Rect(50, 30, 540, 420), width=2, border_radius=8)
+            # canvas border
             pygame.draw.rect(screen, (30, 30, 30), canvas_rect, width=2)
+            # draw canvas content
             screen.blit(paint_canvas, canvas_rect.topleft)
             
+            # draw palette
             for i, rect in enumerate(palette_rects):
                 pygame.draw.rect(screen, palette_colors[i], rect)
                 pygame.draw.rect(screen, (30, 30, 30), rect, width=2)
                 if palette_colors[i] == paint_color:
                     pygame.draw.rect(screen, (255, 255, 255), rect.inflate(6, 6), width=2)
             
+            # buttons
             pygame.draw.rect(screen, (200, 200, 200), clear_button_rect, border_radius=6)
             pygame.draw.rect(screen, (30, 30, 30), clear_button_rect, width=2, border_radius=6)
             pygame.draw.rect(screen, (200, 230, 200), done_button_rect, border_radius=6)
@@ -444,8 +302,10 @@ while running:
             screen.blit(ui_font.render("Clear", True, (20, 20, 20)), (clear_button_rect.x + 16, clear_button_rect.y + 5))
             screen.blit(ui_font.render("Done", True, (20, 20, 20)), (done_button_rect.x + 22, done_button_rect.y + 5))
             
+            # handle drawing
             buttons = pygame.mouse.get_pressed(num_buttons=3)
             if buttons[0]:
+                # draw on canvas when inside
                 if canvas_rect.collidepoint(mouse_pos):
                     local_pos = (mouse_pos[0] - canvas_rect.x, mouse_pos[1] - canvas_rect.y)
                     if last_paint_pos is None:
@@ -453,12 +313,16 @@ while running:
                     else:
                         pygame.draw.line(paint_canvas, paint_color, last_paint_pos, local_pos, brush_size * 2)
                     last_paint_pos = local_pos
+            # palette and buttons clicks (on click-down)
             if mouse_clicked:
+                # palette selection
                 for i, rect in enumerate(palette_rects):
                     if rect.collidepoint(mouse_pos):
                         paint_color = palette_colors[i]
+                # clear
                 if clear_button_rect.collidepoint(mouse_pos):
                     paint_canvas.fill((255, 255, 255))
+                # done -> save and exit paint mode
                 if done_button_rect.collidepoint(mouse_pos):
                     os.makedirs('paintings', exist_ok=True)
                     save_path = os.path.join('paintings', f'day_{current_paint_day}.png')
@@ -470,7 +334,9 @@ while running:
             clock.tick(60)
             continue
         
+        # gallery screen (show all 3 paintings)
         if showing_gallery:
+            # Display sunflower with old animations
             if old_stage:
                 anim_set = old_animations
             elif evolved:
@@ -479,6 +345,7 @@ while running:
                 anim_set = base_animations
             screen.blit(anim_set[action][frame], (250, 270))
             
+            # Display dialogue box with prompt
             text_box_width = 280
             text_box_height = 85
             text_box_x = 355
@@ -494,15 +361,18 @@ while running:
             screen.blit(prompt_text2, (text_box_x + 45, text_box_y + 40))
             screen.blit(prompt_text3, (text_box_x + 85, text_box_y + 65))
             
+            # Display the 3 paintings
             painting_positions = [(50, 50), (250, 50), (450, 50)]
             for i, pos in enumerate(painting_positions):
-                paint_day = (i + 1) * 3
+                paint_day = (i + 1) * 3  # day 3, 6, 9
                 paint_path = os.path.join('paintings', f'day_{paint_day}.png')
                 if os.path.exists(paint_path):
                     try:
                         painting = pygame.image.load(paint_path)
+                        # Scale down to fit
                         painting = pygame.transform.scale(painting, (150, 90))
                         screen.blit(painting, pos)
+                        # Border
                         pygame.draw.rect(screen, (30, 30, 30), pygame.Rect(pos[0], pos[1], 150, 90), width=2)
                     except:
                         pass
@@ -515,7 +385,9 @@ while running:
             clock.tick(60)
             continue
         
+        # farewell message screen
         if showing_farewell:
+            # Display sunflower with old animations
             if old_stage:
                 anim_set = old_animations
             elif evolved:
@@ -524,6 +396,7 @@ while running:
                 anim_set = base_animations
             screen.blit(anim_set[action][frame], (250, 270))
             
+            # Display farewell dialogue box
             text_box_width = 350
             text_box_height = 100
             text_box_x = 270
@@ -549,64 +422,55 @@ while running:
             clock.tick(60)
             continue
         
+        # ending sequence screens
         if ending_screen > 0:
+            # Draw background
             screen.blit(backgrounds[current_bg], (0, 0))
             
+            # Display sunflower with old animations
             if old_stage:
                 anim_set = old_animations
             elif evolved:
                 anim_set = evolved_animations
             else:
                 anim_set = base_animations
-
-            if ending_screen >= 8:
+            
+            # On wilting screen, show death animation
+            if ending_screen == 6:
                 screen.blit(death_animation[death_frame], (250, 270))
                 current_time = pygame.time.get_ticks()
-                if current_time - death_last_update >= death_cooldown:
-                    death_frame = (death_frame + 1) % len(death_animation)
+                if current_time - death_last_update >= evolution_cooldown:
+                    death_frame += 1
+                    if death_frame >= len(death_animation):
+                        death_frame = 0
                     death_last_update = current_time
             else:
-                current_time = pygame.time.get_ticks()
-                if current_time - ending_anim_last_update >= animation_cooldown:
-                    ending_anim_frame = (ending_anim_frame + 1) % len(anim_set[0])
-                    ending_anim_last_update = current_time
-                screen.blit(anim_set[0][ending_anim_frame], (250, 270))
+                screen.blit(anim_set[action][frame], (250, 270))
+            
+            # Display text based on screen
+            text_box_width = 350
+            text_box_height = 100
+            text_box_x = 270
+            text_box_y = 220
+            text_box_rect = pygame.Rect(text_box_x, text_box_y, text_box_width, text_box_height)
+            pygame.draw.rect(screen, (255, 193, 87), text_box_rect, border_radius=15)
+            pygame.draw.rect(screen, (217, 137, 0), text_box_rect, 3, border_radius=15)
             
             text_lines = []
-            if ending_screen <= 7:
-                text_box_width = 250
-                text_box_height = 100
-                text_box_x = 370
-                text_box_y = 250
-                text_box_rect = pygame.Rect(text_box_x, text_box_y, text_box_width, text_box_height)
-                pygame.draw.rect(screen, (255, 193, 87), text_box_rect, border_radius=15)
-                pygame.draw.rect(screen, (217, 137, 0), text_box_rect, 3, border_radius=15)
-            
             if ending_screen == 1:
                 text_lines = [
-                    "I know I'm slowing down a bit,",
-                    "I can't really soak up the",
-                    "sun like I used to."
+                    f"You fed me {feed_count} times",
+                    f"and watered me {water_count} times!"
                 ]
             elif ending_screen == 2:
                 text_lines = [
-                    "But that's okay,",
-                    "it was fun while it lasted."
-                ]
-            elif ending_screen == 3:
-                text_lines = [
-                    f"You fed me {feed_count} times",
-                    f"and watered me {water_count} times"
-                ]
-            elif ending_screen == 4:
-                text_lines = [
                     "We also made these",
-                    "really cool pictures",
-                    "I could've been an artist."
+                    "really cool pictures"
                 ]
+                # Display the 3 paintings
                 painting_positions = [(50, 50), (250, 50), (450, 50)]
                 for i, pos in enumerate(painting_positions):
-                    paint_day = (i + 1) * 3
+                    paint_day = (i + 1) * 3  # day 3, 6, 9
                     paint_path = os.path.join('paintings', f'day_{paint_day}.png')
                     if os.path.exists(paint_path):
                         try:
@@ -616,22 +480,23 @@ while running:
                             pygame.draw.rect(screen, (30, 30, 30), pygame.Rect(pos[0], pos[1], 150, 90), width=2)
                         except:
                             pass
-            elif ending_screen == 5:
+            elif ending_screen == 3:
                 text_lines = [
                     "Thank you for taking",
                     "care of me so well,",
                     "you really are great."
                 ]
-            elif ending_screen == 6:
+            elif ending_screen == 4:
                 text_lines = ["..."]
-            elif ending_screen == 7:
+            elif ending_screen == 5:
                 text_lines = [
                     "I really enjoyed being",
                     "your friend."
                 ]
-            elif ending_screen >= 8:
-                text_lines = []
+            elif ending_screen == 6:
+                text_lines = []  # Just show wilting
             
+            # Render and display text
             y_offset = 0
             for line in text_lines:
                 line_text = phrase_font.render(line, True, phrase_color)
@@ -640,17 +505,16 @@ while running:
                 screen.blit(line_text, (text_x, text_y))
                 y_offset += 25
             
+            # Handle click to advance
             if mouse_clicked:
-                if ending_screen < 8:
+                if ending_screen < 6:
                     ending_screen += 1
-                    if ending_screen == 8:
-                        death_frame = 0
-                        death_last_update = pygame.time.get_ticks()
-                elif ending_screen == 8:
-                    ending_screen = 9
+                elif ending_screen == 6:
+                    ending_screen = 7  # Start fade to black
                     fade_alpha = 0
             
-            if ending_screen == 9:
+            # Fade to black screen
+            if ending_screen == 7:
                 fade_alpha = min(fade_alpha + fade_speed, 255)
                 fade_surface = pygame.Surface((640, 480))
                 fade_surface.set_alpha(int(fade_alpha))
@@ -658,9 +522,10 @@ while running:
                 screen.blit(fade_surface, (0, 0))
                 
                 if fade_alpha >= 255:
-                    ending_screen = 10
+                    ending_screen = 8  # Move to reset
             
-            if ending_screen == 10:
+            # Reset to title
+            if ending_screen == 8:
                 game_start = False
                 ending_started = False
                 ending_screen = 0
@@ -674,16 +539,6 @@ while running:
                 frame = 0
                 current_bg = 0
                 click_count = 0
-                use_greeting_next_talk = True
-                used_young.clear()
-                used_evolved.clear()
-                used_old.clear()
-                used_ambient.clear()
-                used_water.clear()
-                used_feed.clear()
-                used_greetings_day.clear()
-                used_greetings_sunset.clear()
-                used_greetings_night.clear()
             
             pygame.display.flip()
             clock.tick(60)
@@ -694,29 +549,35 @@ while running:
             if evolved and day_count >= OLD_STAGE_DAYS:
                 old_stage = True
                 save_evolution_data(day_count, evolved, old_stage)
-                action = 2
+                action = 2  # idle
                 frame = 0
         
+        # check for evolution (after 3 day cycles so it evolves)
         if not evolved and not playing_evolution and not painting_active:
             if day_count >= EVOLUTION_DAYS:
                 playing_evolution = True
                 evolution_frame = 0
                 evolution_last_update = pygame.time.get_ticks()
         
+        # handle evolution animation
         if playing_evolution:
+            # display evolution animation oin
             screen.blit(evolve_animation[evolution_frame], (250, 270))
             
             current_time = pygame.time.get_ticks()
             if current_time - evolution_last_update >= evolution_cooldown:
                 evolution_frame += 1
                 if evolution_frame >= len(evolve_animation):
+                    # evolution complete
                     playing_evolution = False
                     evolved = True
                     save_evolution_data(day_count, evolved, old_stage)
-                    action = 2
+                    action = 2  # start with idle
                     frame = 0
                 evolution_last_update = current_time
+        # handle one-time animations
         elif playing_one_time:
+            # select correct animation set based on stage
             if old_stage:
                 anim_set = old_animations
             elif evolved:
@@ -727,16 +588,20 @@ while running:
             if current_time - one_time_last_update >= animation_cooldown:
                 one_time_frame += 1
                 if one_time_frame >= len(anim_set[one_time_action]):
+                    # animation finished one loop
                     one_time_loop_count += 1
                     if one_time_loop_count >= one_time_loops_needed:
+                        # done looping, return to idle
                         playing_one_time = False
-                        action = 2
+                        action = 2  # idle
                         frame = 0
                         one_time_loop_count = 0
                     else:
+                        # loop again
                         one_time_frame = 0
                 one_time_last_update = current_time
         else:
+            # update idle animation
             if old_stage:
                 anim_set = old_animations
             elif evolved:
@@ -786,6 +651,7 @@ while running:
                     frame = 0
                 last_update = current_time
         
+        # display sunflower sprite (skip if playing evolution or death)
         if not playing_evolution and not playing_death:
             if old_stage:
                 anim_set = old_animations
@@ -798,13 +664,17 @@ while running:
             else:
                 screen.blit(anim_set[action][frame], (250, 270))
         
+        # display watering can if active
         if show_watering_can:
             screen.blit(watering_can_animation[watering_can_frame], (270, 190))
         
+        # display plant food if active
         if show_plant_food:
             screen.blit(plant_food_animation[plant_food_frame], (330, 260))
         
+        # display phrase if active
         if show_phrase:
+            # typing effect
             if current_char_index < len(full_phrase):
                 current_time = pygame.time.get_ticks()
                 if current_time - last_char_time >= typing_speed:
@@ -812,22 +682,31 @@ while running:
                     current_phrase = full_phrase[:current_char_index]
                     last_char_time = current_time
             
+            # check if phrase should disappear
             if pygame.time.get_ticks() - phrase_timer > phrase_duration:
                 show_phrase = False
             else:
+                # create text box background
                 text_box_width = 250
                 text_box_height = 80
                 text_box_x = 370
                 text_box_y = 250
                 
+                # draw rounded rectangle for text box
                 text_box_rect = pygame.Rect(text_box_x, text_box_y, text_box_width, text_box_height)
                 pygame.draw.rect(screen, (255, 193, 87), text_box_rect, border_radius=15)
                 pygame.draw.rect(screen, (217, 137, 0), text_box_rect, 3, border_radius=15)
                 
-                render_wrapped_centered(screen, current_phrase, phrase_font, phrase_color, text_box_rect)
+                # render and display phrase text (centered in box)
+                phrase_text = phrase_font.render(current_phrase, True, phrase_color)
+                text_x = text_box_x + (text_box_width - phrase_text.get_width()) // 2
+                text_y = text_box_y + (text_box_height - phrase_text.get_height()) // 2
+                screen.blit(phrase_text, (text_x, text_y))
         
+        # display and handle talk button (action 0) - disabled during ending
         if not (showing_gallery or showing_farewell or showing_recap or playing_death):
             screen.blit(talk_button, talk_button_rect)
+        # disable talk while any animation is in progress
         if (
             talk_button_rect.collidepoint(mouse_pos)
             and mouse_clicked
@@ -838,13 +717,12 @@ while running:
             and not show_plant_food
         ):
             playing_one_time = True
-            one_time_action = 0
+            one_time_action = 0  # talking animation
             one_time_frame = 0
             one_time_loop_count = 0
-            one_time_loops_needed = 2
+            one_time_loops_needed = 2  # talk animation loops twice
             one_time_last_update = pygame.time.get_ticks()
-            full_phrase = get_next_phrase(evolved, old_stage, use_greeting_next_talk)
-            use_greeting_next_talk = False
+            full_phrase = random.choice(phrases)
             current_phrase = ""
             current_char_index = 0
             last_char_time = pygame.time.get_ticks()
@@ -854,21 +732,25 @@ while running:
             if click_count >= clicks_per_bg:
                 old_bg = current_bg
                 current_bg = (current_bg + 1) % len(backgrounds)
-                use_greeting_next_talk = True
+                # increment day count when cycling from night (2) back to day (0)
                 if old_bg == 2 and current_bg == 0:
                     day_count += 1
                     save_evolution_data(day_count, evolved, old_stage)
+                    # trigger ending sequence after day 9 (old stage complete)
                     if day_count > 9 and not ending_started:
                         ending_started = True
-                        ending_screen = 1
+                        showing_recap = True
+                    # trigger paint prompt only every 3 days (stage milestones)
                     elif day_count > 0 and day_count % 3 == 0:
                         showing_paint_prompt = True
                         current_paint_day = day_count
                         paint_canvas.fill((255, 255, 255))
                 click_count = 0
         
+        # display and handle water button (action 1) - disabled during ending
         if not (showing_gallery or showing_farewell or showing_recap or playing_death):
             screen.blit(water_button, water_button_rect)
+        # disable water while any animation is in progress
         if (
             water_button_rect.collidepoint(mouse_pos)
             and mouse_clicked
@@ -879,39 +761,37 @@ while running:
             and not show_plant_food
         ):
             playing_one_time = True
-            one_time_action = 1
+            one_time_action = 1  # excited animation
             one_time_frame = 0
             one_time_loop_count = 0
-            one_time_loops_needed = 1
+            one_time_loops_needed = 1  # water animation loops once
             one_time_last_update = pygame.time.get_ticks()
             show_watering_can = True
             watering_can_frame = 0
             water_count += 1
-            full_phrase = get_next_from(water_phrases, used_water)
-            current_phrase = ""
-            current_char_index = 0
-            last_char_time = pygame.time.get_ticks()
-            show_phrase = True
-            phrase_timer = pygame.time.get_ticks()
             click_count += 1
             if click_count >= clicks_per_bg:
                 old_bg = current_bg
                 current_bg = (current_bg + 1) % len(backgrounds)
-                use_greeting_next_talk = True
+                # increment day count when cycling from night (2) back to day (0)
                 if old_bg == 2 and current_bg == 0:
                     day_count += 1
                     save_evolution_data(day_count, evolved, old_stage)
+                    # trigger ending sequence after day 9 (old stage complete)
                     if day_count > 9 and not ending_started:
                         ending_started = True
                         ending_screen = 1
+                    # trigger paint prompt only every 3 days (stage milestones)
                     elif day_count > 0 and day_count % 3 == 0:
                         showing_paint_prompt = True
                         current_paint_day = day_count
                         paint_canvas.fill((255, 255, 255))
                 click_count = 0
 
+        # display and handle feed button (action 2) - disabled during ending
         if not (showing_gallery or showing_farewell or showing_recap or playing_death):
             screen.blit(feed_button, feed_button_rect)
+        # disable feed while any animation is in progress
         if (
             feed_button_rect.collidepoint(mouse_pos)
             and mouse_clicked
@@ -922,31 +802,27 @@ while running:
             and not show_plant_food
         ):
             playing_one_time = True
-            one_time_action = 1
+            one_time_action = 1  # excited animation
             one_time_frame = 0
             one_time_loop_count = 0
-            one_time_loops_needed = 1
+            one_time_loops_needed = 1  # feed animation loops once
             one_time_last_update = pygame.time.get_ticks()
             show_plant_food = True
             plant_food_frame = 0
             feed_count += 1
-            full_phrase = get_next_from(feed_phrases, used_feed)
-            current_phrase = ""
-            current_char_index = 0
-            last_char_time = pygame.time.get_ticks()
-            show_phrase = True
-            phrase_timer = pygame.time.get_ticks()
             click_count += 1
             if click_count >= clicks_per_bg:
                 old_bg = current_bg
                 current_bg = (current_bg + 1) % len(backgrounds)
-                use_greeting_next_talk = True
+                # increment day count when cycling from night (2) back to day (0)
                 if old_bg == 2 and current_bg == 0:
                     day_count += 1
                     save_evolution_data(day_count, evolved, old_stage)
+                    # trigger ending sequence after day 9 (old stage complete)
                     if day_count > 9 and not ending_started:
                         ending_started = True
-                        ending_screen = 1
+                        showing_recap = True
+                    # trigger paint prompt only every 3 days (stage milestones)
                     elif day_count > 0 and day_count % 3 == 0:
                         showing_paint_prompt = True
                         current_paint_day = day_count
@@ -954,6 +830,6 @@ while running:
                 click_count = 0
         
     pygame.display.flip()
-    clock.tick(60)
+    clock.tick(60)  # 60 FPS
 
 pygame.quit()
